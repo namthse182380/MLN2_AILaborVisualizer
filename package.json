@@ -1,0 +1,39 @@
+{
+  "name": "material-ui-nextjs-ts",
+  "version": "7.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "post-update": "echo \"codesandbox preview only, need an update\" && pnpm update --latest"
+  },
+  "dependencies": {
+    "@emotion/cache": "latest",
+    "@emotion/react": "latest",
+    "@emotion/styled": "latest",
+    "@mui/icons-material": "latest",
+    "@mui/material": "latest",
+    "@mui/material-nextjs": "latest",
+    "@mui/x-charts": "^8.14.1",
+    "@mui/x-data-grid": "^8.14.1",
+    "@mui/x-data-grid-pro": "^8.14.1",
+    "@mui/x-date-pickers": "^8.14.1",
+    "@mui/x-tree-view": "^8.14.1",
+    "@react-spring/web": "^10.0.3",
+    "dayjs": "^1.11.18",
+    "next": "^15.0.0",
+    "openai": "^6.6.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "latest",
+    "eslint-config-next": "^15.0.0",
+    "typescript": "latest"
+  }
+}
