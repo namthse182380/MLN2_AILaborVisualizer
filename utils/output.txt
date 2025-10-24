@@ -371,154 +371,6 @@ export default function AboutPage() {
   );
 }
 
-===== .\src\app\api\analyze-from-text\route.ts =====
-// src/app/api/analyze-from-text/route.ts
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-// Hàm helper để cấu hình client AI (giữ nguyên)
-const getAiClient = () => {
-    const supplier = process.env.GPT_SUPPLIER;
-
-    if (supplier === 'GEMINI') {
-        if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-        return {
-            client: new OpenAI({
-                apiKey: process.env.GEMINI_API_KEY,
-                baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
-            }),
-            model: process.env.GEMINI_MODEL_USING || "gemini-pro"
-        };
-    }
-
-    // Mặc định là OpenRouter
-    if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured");
-    return {
-        client: new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: process.env.OPENROUTER_API_KEY,
-        }),
-        model: process.env.OPENROUTER_MODEL_USING || 'mistralai/mistral-7b-instruct:free'
-    };
-};
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const text = body.text;
-
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      throw new Error("Invalid or empty 'text' provided in the request body.");
-    }
-
-    // --- SỬA LỖI TẠI ĐÂY: ĐƠN GIẢN HÓA PROMPT ---
-    // AI giờ chỉ cần làm một nhiệm vụ duy nhất: trích xuất C và V.
-    // Mọi phép tính toán đã được frontend xử lý.
-    const extractionPrompt = `
-      You are a simple data extraction API. Your ONLY task is to extract numerical data from the provided text to build a valid JSON object.
-      RULES:
-      1.  EXTRACT the following values for BOTH the "before AI" and "after AI" scenarios from the text:
-          - Constant Capital (C)
-          - Variable Capital (V)
-      2.  EXTRACT the final text-based analysis paragraph.
-      3.  RESPOND ONLY with a single, valid JSON object. Do not include markdown, explanations, or any other text.
-      
-      TEXT TO ANALYZE:
-      ---
-      ${text}
-      ---
-      
-      EXPECTED JSON OUTPUT STRUCTURE:
-      {
-        "before": { "c": <number>, "v": <number> },
-        "after": { "c": <number>, "v": <number> },
-        "analysis": "<string>"
-      }
-    `;
-    
-    const { client: aiClient, model } = getAiClient();
-    
-    const response = await aiClient.chat.completions.create({
-        model: model,
-        messages: [{ role: "user", content: extractionPrompt }],
-        response_format: { type: "json_object" }
-    });
-    
-    const content = response.choices[0].message?.content;
-    if (!content) {
-        throw new Error("Invalid response structure from AI.");
-    }
-    
-    // Thử parse JSON để đảm bảo nó hợp lệ trước khi gửi đi
-    const parsedContent = JSON.parse(content);
-
-    return NextResponse.json(parsedContent);
-
-  } catch (error: any) {
-    console.error("Extraction API Error:", error);
-    const errorMessage = error.response ? `${error.status} ${await error.response.text()}` : error.message;
-    return NextResponse.json({ error: `Lỗi từ AI provider: ${errorMessage}` }, { status: 500 });
-  }
-}
-
-===== .\src\app\api\analyze-scenario\route.ts =====
-// src/app/api/analyze-scenario/route.ts
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-// Hàm helper để cấu hình client AI (ĐÃ SỬA LỖI THEO ĐÚNG TÀI LIỆU)
-const getAiClient = () => {
-    const supplier = process.env.GPT_SUPPLIER;
-
-    if (supplier === 'GEMINI') {
-        if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-        return {
-            client: new OpenAI({
-                apiKey: process.env.GEMINI_API_KEY,
-                baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
-            }),
-            model: process.env.GEMINI_MODEL_USING || "gemini-pro"
-        };
-    }
-
-    // Mặc định là OpenRouter
-    if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured");
-    return {
-        client: new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: process.env.OPENROUTER_API_KEY,
-        }),
-        model: process.env.OPENROUTER_MODEL_USING || 'mistralai/mistral-7b-instruct:free'
-    };
-};
-
-export async function POST(request: Request) {
-  try {
-    const scenario = await request.json();
-    const { client: aiClient, model } = getAiClient();
-    const masterPrompt = `...`; // Giữ nguyên prompt của bạn
-
-    const response = await aiClient.chat.completions.create({
-        model: model,
-        messages: [{ role: "user", content: masterPrompt }],
-        response_format: { type: "json_object" }
-    });
-    
-    const content = response.choices[0].message?.content;
-    if (!content) {
-        throw new Error("Invalid response structure from AI.");
-    }
-    
-    return NextResponse.json(JSON.parse(content));
-
-  } catch (error: any)
-{
-    console.error("Analysis API Error:", error);
-    const errorMessage = error.response ? `${error.status} ${await error.response.text()}` : error.message;
-    return NextResponse.json({ error: `Lỗi từ AI provider: ${errorMessage}` }, { status: 500 });
-  }
-}
-
 ===== .\src\app\api\chat\route.ts =====
 // src/app/api/chat/route.ts
 import { NextResponse } from 'next/server';
@@ -751,61 +603,6 @@ export async function POST(request: Request) {
   }
 }
 
-===== .\src\app\api\generate-title\route.ts =====
-// src/app/api/generate-title/route.ts
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-// Hàm helper để cấu hình client AI (ĐÃ SỬA LỖI THEO ĐÚNG TÀI LIỆU)
-const getAiClient = () => {
-    const supplier = process.env.GPT_SUPPLIER;
-
-    if (supplier === 'GEMINI') {
-        if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-        return {
-            client: new OpenAI({
-                apiKey: process.env.GEMINI_API_KEY,
-                baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
-            }),
-            model: process.env.GEMINI_MODEL_USING || "gemini-pro"
-        };
-    }
-
-    // Mặc định là OpenRouter
-    if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured");
-    return {
-        client: new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: process.env.OPENROUTER_API_KEY,
-        }),
-        model: process.env.OPENROUTER_MODEL_USING || 'mistralai/mistral-7b-instruct:free'
-    };
-};
-
-export async function POST(request: Request) {
-  try {
-    const { prompt } = await request.json();
-    const { client: aiClient, model } = getAiClient();
-    const titlePrompt = `Tóm tắt câu lệnh của người dùng sau đây thành một tiêu đề ngắn gọn (không quá 5 từ) bằng tiếng Việt. Chỉ trả về nội dung tiêu đề, không thêm bất cứ thứ gì khác. Câu lệnh: "${prompt}"`;
-    
-    const response = await aiClient.chat.completions.create({
-        model: model,
-        messages: [{ role: "user", content: titlePrompt }],
-    });
-
-    const title = response.choices[0].message.content;
-    if (!title) throw new Error("Failed to generate title.");
-
-    const cleanedTitle = title.trim().replace(/"/g, '');
-    return NextResponse.json({ title: cleanedTitle });
-
-  } catch (error: any) {
-    console.error("Title Generation API Error:", error);
-    const errorMessage = error.response ? `${error.status} ${await error.response.text()}` : error.message;
-    return NextResponse.json({ error: `Lỗi từ AI provider: ${errorMessage}` }, { status: 500 });
-  }
-}
-
 ===== .\src\app\api\openrouter\route.ts =====
 // src/app/api/openrouter/route.ts
 import { NextResponse } from 'next/server';
@@ -870,9 +667,12 @@ export async function POST(request: Request) {
 }
 
 ===== .\src\app\api\visualize\route.ts =====
-// src/app/api/analyze-from-text/route.ts
+// src/app/api/visualize/route.ts
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+
+// Định nghĩa lại kiểu Message để file này hiểu
+interface Message { role: 'user' | 'assistant'; content: string; }
 
 // Hàm helper để cấu hình client AI (giữ nguyên)
 const getAiClient = () => {
@@ -892,27 +692,35 @@ const getAiClient = () => {
 };
 
 export async function POST(request: Request) {
-  const MAX_RETRIES = 2; // Thử lại tối đa 2 lần
+  const MAX_RETRIES = 2;
   try {
     const body = await request.json();
-    const text = body.text;
+    // --- SỬA LỖI: Nhận 'messages' thay vì 'text' ---
+    const messages: Message[] = body.messages;
 
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      throw new Error("Invalid or empty 'text' provided in the request body.");
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      throw new Error("Invalid or empty 'messages' array provided in the request body.");
     }
 
+    // Biến đổi mảng messages thành một chuỗi văn bản duy nhất để AI phân tích
+    const conversationText = messages
+      .map(msg => `${msg.role === 'user' ? 'Người dùng' : 'Trợ lý'}: ${msg.content}`)
+      .join('\n---\n');
+
+    // --- SỬA LỖI: Cập nhật prompt để xử lý hội thoại ---
     const extractionPrompt = `
-      You are a simple data extraction API. Your ONLY task is to extract numerical data from the provided text to build a valid JSON object.
+      You are a data extraction API. Your task is to analyze the provided CONVERSATION HISTORY to extract numerical data.
       RULES:
-      1.  EXTRACT the following values for BOTH the "before AI" and "after AI" scenarios from the text:
+      1.  READ the entire conversation to find the FINAL, CONFIRMED values for the scenario.
+      2.  EXTRACT the following values for BOTH the "before AI" and "after AI" scenarios:
           - Constant Capital (C)
           - Variable Capital (V)
-      2.  EXTRACT the final text-based analysis paragraph.
-      3.  YOUR ENTIRE RESPONSE MUST BE ONLY THE JSON OBJECT. Do not include markdown tags like \`\`\`json, explanations, or any other text.
+      3.  EXTRACT the final text-based analysis paragraph from the assistant's LAST message.
+      4.  YOUR ENTIRE RESPONSE MUST BE ONLY THE JSON OBJECT. Do not include markdown or any other text.
       
-      TEXT TO ANALYZE:
+      CONVERSATION HISTORY TO ANALYZE:
       ---
-      ${text}
+      ${conversationText}
       ---
       
       EXPECTED JSON OUTPUT STRUCTURE:
@@ -938,7 +746,6 @@ export async function POST(request: Request) {
                 throw new Error("AI returned empty content.");
             }
 
-            // --- NEW: Logic để tìm JSON bên trong chuỗi văn bản thừa ---
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             if (jsonMatch && jsonMatch[0]) {
                 content = jsonMatch[0];
@@ -946,23 +753,20 @@ export async function POST(request: Request) {
             
             const parsedJson = JSON.parse(content);
 
-            // Xác thực lại lần cuối trước khi trả về
             if (parsedJson.before && parsedJson.after && typeof parsedJson.before.c === 'number' && typeof parsedJson.before.v === 'number') {
-                return NextResponse.json(parsedJson); // Thành công, thoát khỏi vòng lặp và trả về
+                return NextResponse.json(parsedJson);
             }
 
-            // Nếu JSON hợp lệ nhưng thiếu trường, coi như lỗi để thử lại
             throw new Error("Parsed JSON is missing required fields.");
 
         } catch (error) {
             console.error(`Attempt ${i + 1} failed:`, error);
             if (i === MAX_RETRIES - 1) {
-                // Nếu đây là lần thử cuối cùng, ném lỗi ra ngoài
                 throw error;
             }
         }
     }
-    // Nếu vòng lặp kết thúc mà không thành công
+    
     throw new Error("Failed to extract data from AI after multiple attempts.");
 
   } catch (error: any) {
@@ -1173,7 +977,7 @@ export default function ChatPage() {
             if (!conversationHistory || conversationHistory.length === 0) {
                 throw new Error('Không tìm thấy lịch sử hội thoại.');
             }
-            const analyzeRes = await fetch('/api/analyze-from-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: conversationHistory }) });
+            const analyzeRes = await fetch('/api/visualize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: conversationHistory }) });
             if (!analyzeRes.ok) { const err = await analyzeRes.json(); throw new Error(`Lỗi trích xuất: ${err.error || 'Lỗi không xác định từ API'}`); }
             const extractedData = await analyzeRes.json();
             const isExtractedDataValid = (data: any) => {
@@ -1863,7 +1667,9 @@ export default function AnalysisPanel({ analyses, currentAnalysis, onSelectAnaly
             </Stack>
 
             <FormControl fullWidth variant="outlined" size="small">
-                <InputLabel>Phiên bản Phân tích</InputLabel>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: 'text.primary', letterSpacing: '0.5px', pl: 0.5 }}>
+                    Phiên bản Phân tích
+                </Typography>
                 <Select value={currentAnalysis.id} onChange={(e) => onSelectAnalysis(e.target.value)} label="Phiên bản Phân tích">
                     {analyses.map(a => (<MenuItem key={a.id} value={a.id}>{a.title}</MenuItem>))}
                 </Select>
@@ -2062,237 +1868,6 @@ export default function CapitalConcentrationChart({ data }: CapitalConcentration
     </Card>
   );
 }
-
-===== .\src\components\CardAlert.tsx =====
-import * as React from 'react';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-
-export default function CardAlert() {
-  return (
-    <Card variant="outlined" sx={{ m: 1.5, flexShrink: 0 }}>
-      <CardContent>
-        <AutoAwesomeRoundedIcon fontSize="small" />
-        <Typography gutterBottom sx={{ fontWeight: 600 }}>
-          Plan about to expire
-        </Typography>
-        <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-          Enjoy 10% off when renewing your plan today.
-        </Typography>
-        <Button variant="contained" size="small" fullWidth>
-          Get the discount
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-
-===== .\src\components\ChartUserByCountry.tsx =====
-'use client'
-
-import * as React from 'react';
-import { PieChart } from '@mui/x-charts/PieChart';
-import { useDrawingArea } from '@mui/x-charts/hooks';
-import { styled } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack';
-import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgress';
-
-import {
-  IndiaFlag,
-  UsaFlag,
-  BrazilFlag,
-  GlobeFlag,
-} from '../internals/components/CustomIcons';
-
-const data = [
-  { label: 'India', value: 50000 },
-  { label: 'USA', value: 35000 },
-  { label: 'Brazil', value: 10000 },
-  { label: 'Other', value: 5000 },
-];
-
-const countries = [
-  {
-    name: 'India',
-    value: 50,
-    flag: <IndiaFlag />,
-    color: 'hsl(220, 25%, 65%)',
-  },
-  {
-    name: 'USA',
-    value: 35,
-    flag: <UsaFlag />,
-    color: 'hsl(220, 25%, 45%)',
-  },
-  {
-    name: 'Brazil',
-    value: 10,
-    flag: <BrazilFlag />,
-    color: 'hsl(220, 25%, 30%)',
-  },
-  {
-    name: 'Other',
-    value: 5,
-    flag: <GlobeFlag />,
-    color: 'hsl(220, 25%, 20%)',
-  },
-];
-
-interface StyledTextProps {
-  variant: 'primary' | 'secondary';
-}
-
-const StyledText = styled('text', {
-  shouldForwardProp: (prop) => prop !== 'variant',
-})<StyledTextProps>(({ theme }) => ({
-  textAnchor: 'middle',
-  dominantBaseline: 'central',
-  fill: (theme.vars || theme).palette.text.secondary,
-  variants: [
-    {
-      props: {
-        variant: 'primary',
-      },
-      style: {
-        fontSize: theme.typography.h5.fontSize,
-      },
-    },
-    {
-      props: ({ variant }) => variant !== 'primary',
-      style: {
-        fontSize: theme.typography.body2.fontSize,
-      },
-    },
-    {
-      props: {
-        variant: 'primary',
-      },
-      style: {
-        fontWeight: theme.typography.h5.fontWeight,
-      },
-    },
-    {
-      props: ({ variant }) => variant !== 'primary',
-      style: {
-        fontWeight: theme.typography.body2.fontWeight,
-      },
-    },
-  ],
-}));
-
-interface PieCenterLabelProps {
-  primaryText: string;
-  secondaryText: string;
-}
-
-function PieCenterLabel({ primaryText, secondaryText }: PieCenterLabelProps) {
-  const { width, height, left, top } = useDrawingArea();
-  const primaryY = top + height / 2 - 10;
-  const secondaryY = primaryY + 24;
-
-  return (
-    <React.Fragment>
-      <StyledText variant="primary" x={left + width / 2} y={primaryY}>
-        {primaryText}
-      </StyledText>
-      <StyledText variant="secondary" x={left + width / 2} y={secondaryY}>
-        {secondaryText}
-      </StyledText>
-    </React.Fragment>
-  );
-}
-
-const colors = [
-  'hsl(220, 20%, 65%)',
-  'hsl(220, 20%, 42%)',
-  'hsl(220, 20%, 35%)',
-  'hsl(220, 20%, 25%)',
-];
-
-export default function ChartUserByCountry() {
-  return (
-    <Card
-      variant="outlined"
-      sx={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}
-    >
-      <CardContent>
-        <Typography component="h2" variant="subtitle2">
-          Users by country
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <PieChart
-            colors={colors}
-            margin={{
-              left: 80,
-              right: 80,
-              top: 80,
-              bottom: 80,
-            }}
-            series={[
-              {
-                data,
-                innerRadius: 75,
-                outerRadius: 100,
-                paddingAngle: 0,
-                highlightScope: { fade: 'global', highlight: 'item' },
-              },
-            ]}
-            height={260}
-            width={260}
-            hideLegend
-          >
-            <PieCenterLabel primaryText="98.5K" secondaryText="Total" />
-          </PieChart>
-        </Box>
-        {countries.map((country, index) => (
-          <Stack
-            key={index}
-            direction="row"
-            sx={{ alignItems: 'center', gap: 2, pb: 2 }}
-          >
-            {country.flag}
-            <Stack sx={{ gap: 1, flexGrow: 1 }}>
-              <Stack
-                direction="row"
-                sx={{
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 2,
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: '500' }}>
-                  {country.name}
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {country.value}%
-                </Typography>
-              </Stack>
-              <LinearProgress
-                variant="determinate"
-                aria-label="Number of users by country"
-                value={country.value}
-                sx={{
-                  [`& .${linearProgressClasses.bar}`]: {
-                    backgroundColor: country.color,
-                  },
-                }}
-              />
-            </Stack>
-          </Stack>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
 
 ===== .\src\components\ChatInput.tsx =====
 // src/components/ChatInput.tsx
@@ -2529,337 +2104,6 @@ export default function ChatWelcome({ onExampleClick }: ChatWelcomeProps) {
   );
 }
 
-===== .\src\components\CustomDatePicker.tsx =====
-import * as React from 'react';
-import dayjs, { Dayjs } from 'dayjs';
-import { useForkRef } from '@mui/material/utils';
-import Button from '@mui/material/Button';
-import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker, DatePickerFieldProps } from '@mui/x-date-pickers/DatePicker';
-import {
-  useParsedFormat,
-  usePickerContext,
-  useSplitFieldProps,
-} from '@mui/x-date-pickers';
-
-interface ButtonFieldProps extends DatePickerFieldProps {}
-
-function ButtonField(props: ButtonFieldProps) {
-  const { forwardedProps } = useSplitFieldProps(props, 'date');
-  const pickerContext = usePickerContext();
-  const handleRef = useForkRef(pickerContext.triggerRef, pickerContext.rootRef);
-  const parsedFormat = useParsedFormat();
-  const valueStr =
-    pickerContext.value == null
-      ? parsedFormat
-      : pickerContext.value.format(pickerContext.fieldFormat);
-  const { slotProps, inputRef, ...otherProps } = forwardedProps as any;
-  return (
-    <Button
-      {...otherProps}
-      variant="outlined"
-      ref={handleRef}
-      size="small"
-      startIcon={<CalendarTodayRoundedIcon fontSize="small" />}
-      sx={{ minWidth: 'fit-content' }}
-      onClick={() => pickerContext.setOpen((prev) => !prev)}
-    >
-      {pickerContext.label ?? valueStr}
-    </Button>
-  );
-}
-
-export default function CustomDatePicker() {
-  const [value, setValue] = React.useState<Dayjs | null>(dayjs('2023-04-17'));
-
-  return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <DatePicker
-        value={value}
-        label={value == null ? null : value.format('MMM DD, YYYY')}
-        onChange={(newValue) => setValue(newValue)}
-        slots={{ field: ButtonField }}
-        slotProps={{
-          nextIconButton: { size: 'small' },
-          previousIconButton: { size: 'small' },
-        }}
-        views={['day', 'month', 'year']}
-      />
-    </LocalizationProvider>
-  );
-}
-
-
-===== .\src\components\CustomizedDataGrid.tsx =====
-"use client";
-import * as React from 'react';
-import { DataGrid } from '@mui/x-data-grid';
-import { columns, rows } from '../internals/data/gridData';
-
-export default function CustomizedDataGrid() {
-  const [isMounted, setIsMounted] = React.useState(false);
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
-  if (!isMounted) {
-    return null;
-  }
-  return (
-    <DataGrid
-      checkboxSelection
-      rows={rows}
-      columns={columns}
-      getRowClassName={(params) =>
-        params.indexRelativeToCurrentPage % 2 === 0 ? 'even' : 'odd'
-      }
-      initialState={{
-        pagination: { paginationModel: { pageSize: 20 } },
-      }}
-      pageSizeOptions={[10, 20, 50]}
-      disableColumnResize
-      density="compact"
-      slotProps={{
-        filterPanel: {
-          filterFormProps: {
-            logicOperatorInputProps: {
-              variant: 'outlined',
-              size: 'small',
-            },
-            columnInputProps: {
-              variant: 'outlined',
-              size: 'small',
-              sx: { mt: 'auto' },
-            },
-            operatorInputProps: {
-              variant: 'outlined',
-              size: 'small',
-              sx: { mt: 'auto' },
-            },
-            valueInputProps: {
-              InputComponentProps: {
-                variant: 'outlined',
-                size: 'small',
-              },
-            },
-          },
-        },
-      }}
-    />
-  );
-}
-
-
-===== .\src\components\CustomizedTreeView.tsx =====
-"use client";
-import * as React from 'react';
-import clsx from 'clsx';
-import { animated, useSpring } from '@react-spring/web';
-import { TransitionProps } from '@mui/material/transitions';
-import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Collapse from '@mui/material/Collapse';
-import Typography from '@mui/material/Typography';
-import { RichTreeView } from '@mui/x-tree-view/RichTreeView';
-import { useTreeItem, UseTreeItemParameters } from '@mui/x-tree-view/useTreeItem';
-import {
-  TreeItemContent,
-  TreeItemIconContainer,
-  TreeItemLabel,
-  TreeItemRoot,
-} from '@mui/x-tree-view/TreeItem';
-import { TreeItemIcon } from '@mui/x-tree-view/TreeItemIcon';
-import { TreeItemProvider } from '@mui/x-tree-view/TreeItemProvider';
-import { TreeViewBaseItem } from '@mui/x-tree-view/models';
-import { useTheme } from '@mui/material/styles';
-
-type Color = 'blue' | 'green';
-
-type ExtendedTreeItemProps = {
-  color?: Color;
-  id: string;
-  label: string;
-};
-
-const ITEMS: TreeViewBaseItem<ExtendedTreeItemProps>[] = [
-  {
-    id: '1',
-    label: 'Website',
-    children: [
-      { id: '1.1', label: 'Home', color: 'green' },
-      { id: '1.2', label: 'Pricing', color: 'green' },
-      { id: '1.3', label: 'About us', color: 'green' },
-      {
-        id: '1.4',
-        label: 'Blog',
-        children: [
-          { id: '1.1.1', label: 'Announcements', color: 'blue' },
-          { id: '1.1.2', label: 'April lookahead', color: 'blue' },
-          { id: '1.1.3', label: "What's new", color: 'blue' },
-          { id: '1.1.4', label: 'Meet the team', color: 'blue' },
-        ],
-      },
-    ],
-  },
-  {
-    id: '2',
-    label: 'Store',
-    children: [
-      { id: '2.1', label: 'All products', color: 'green' },
-      {
-        id: '2.2',
-        label: 'Categories',
-        children: [
-          { id: '2.2.1', label: 'Gadgets', color: 'blue' },
-          { id: '2.2.2', label: 'Phones', color: 'blue' },
-          { id: '2.2.3', label: 'Wearables', color: 'blue' },
-        ],
-      },
-      { id: '2.3', label: 'Bestsellers', color: 'green' },
-      { id: '2.4', label: 'Sales', color: 'green' },
-    ],
-  },
-  { id: '4', label: 'Contact', color: 'blue' },
-  { id: '5', label: 'Help', color: 'blue' },
-];
-
-function DotIcon({ color }: { color: string }) {
-  return (
-    <Box sx={{ marginRight: 1, display: 'flex', alignItems: 'center' }}>
-      <svg width={6} height={6}>
-        <circle cx={3} cy={3} r={3} fill={color} />
-      </svg>
-    </Box>
-  );
-}
-
-const AnimatedCollapse = animated(Collapse);
-
-function TransitionComponent(props: TransitionProps) {
-  const style = useSpring({
-    to: {
-      opacity: props.in ? 1 : 0,
-      transform: `translate3d(0,${props.in ? 0 : 20}px,0)`,
-    },
-  });
-
-  return <AnimatedCollapse style={style} {...props} />;
-}
-
-interface CustomLabelProps {
-  children: React.ReactNode;
-  color?: Color;
-  expandable?: boolean;
-}
-
-function CustomLabel({ color, expandable, children, ...other }: CustomLabelProps) {
-  const theme = useTheme();
-  const colors = {
-    blue: (theme.vars || theme).palette.primary.main,
-    green: (theme.vars || theme).palette.success.main,
-  };
-
-  const iconColor = color ? colors[color] : null;
-  return (
-    <TreeItemLabel {...other} sx={{ display: 'flex', alignItems: 'center' }}>
-      {iconColor && <DotIcon color={iconColor} />}
-      <Typography
-        className="labelText"
-        variant="body2"
-        sx={{ color: 'text.primary' }}
-      >
-        {children}
-      </Typography>
-    </TreeItemLabel>
-  );
-}
-
-interface CustomTreeItemProps
-  extends Omit<UseTreeItemParameters, 'rootRef'>,
-    Omit<React.HTMLAttributes<HTMLLIElement>, 'onFocus'> {}
-
-const CustomTreeItem = React.forwardRef(function CustomTreeItem(
-  props: CustomTreeItemProps,
-  ref: React.Ref<HTMLLIElement>,
-) {
-  const { id, itemId, label, disabled, children, ...other } = props;
-
-  const {
-    getRootProps,
-    getContentProps,
-    getIconContainerProps,
-    getLabelProps,
-    getGroupTransitionProps,
-    status,
-    publicAPI,
-  } = useTreeItem({ id, itemId, children, label, disabled, rootRef: ref });
-
-  const item = publicAPI.getItem(itemId);
-  const color = item?.color;
-  return (
-    <TreeItemProvider id={id} itemId={itemId}>
-      <TreeItemRoot {...getRootProps(other)}>
-        <TreeItemContent
-          {...getContentProps({
-            className: clsx('content', {
-              expanded: status.expanded,
-              selected: status.selected,
-              focused: status.focused,
-              disabled: status.disabled,
-            }),
-          })}
-        >
-          {status.expandable && (
-            <TreeItemIconContainer {...getIconContainerProps()}>
-              <TreeItemIcon status={status} />
-            </TreeItemIconContainer>
-          )}
-
-          <CustomLabel {...getLabelProps({ color })} />
-        </TreeItemContent>
-        {children && (
-          <TransitionComponent
-            {...getGroupTransitionProps({ className: 'groupTransition' })}
-          />
-        )}
-      </TreeItemRoot>
-    </TreeItemProvider>
-  );
-});
-
-export default function CustomizedTreeView() {
-  return (
-    <Card
-      variant="outlined"
-      sx={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}
-    >
-      <CardContent>
-        <Typography component="h2" variant="subtitle2">
-          Product tree
-        </Typography>
-        <RichTreeView
-          items={ITEMS}
-          aria-label="pages"
-          multiSelect
-          defaultExpandedItems={['1', '1.1']}
-          defaultSelectedItems={['1.1', '1.1.1']}
-          sx={{
-            m: '0 -8px',
-            pb: '8px',
-            height: 'fit-content',
-            flexGrow: 1,
-            overflowY: 'auto',
-          }}
-          slots={{ item: CustomTreeItem }}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-
 ===== .\src\components\FutureScenarioChart.tsx =====
 // src/components/FutureScenarioChart.tsx
 "use client";
@@ -3033,53 +2277,6 @@ export default function Header() {
         <ColorModeIconDropdown />
       </Stack>
     </Stack>
-  );
-}
-
-
-===== .\src\components\HighlightedCard.tsx =====
-'use client'
-
-import * as React from 'react';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
-import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
-
-export default function HighlightedCard() {
-  const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-
-  return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <InsightsRoundedIcon />
-        <Typography
-          component="h2"
-          variant="subtitle2"
-          gutterBottom
-          sx={{ fontWeight: '600' }}
-        >
-          Explore your data
-        </Typography>
-        <Typography sx={{ color: 'text.secondary', mb: '8px' }}>
-          Uncover performance and visitor insights with our data wizardry.
-        </Typography>
-        <Button
-          variant="contained"
-          size="small"
-          color="primary"
-          endIcon={<ChevronRightRoundedIcon />}
-          fullWidth={isSmallScreen}
-        >
-          Get insights
-        </Button>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -3468,49 +2665,6 @@ export default function MenuContent() {
   );
 }
 
-===== .\src\components\ModeSwitch.tsx =====
-'use client';
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
-import { useColorScheme } from '@mui/material/styles';
-
-export default function ModeSwitch() {
-  const { mode, setMode } = useColorScheme();
-  if (!mode) {
-    return null;
-  }
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'flex-end',
-        mt: 1,
-        p: 1,
-      }}
-    >
-      <FormControl>
-        <InputLabel id="mode-select-label">Theme</InputLabel>
-        <Select
-          labelId="mode-select-label"
-          id="mode-select"
-          value={mode}
-          onChange={(event) => setMode(event.target.value as typeof mode)}
-          label="Theme"
-        >
-          <MenuItem value="system">System</MenuItem>
-          <MenuItem value="light">Light</MenuItem>
-          <MenuItem value="dark">Dark</MenuItem>
-        </Select>
-      </FormControl>
-    </Box>
-  );
-}
-
-
 ===== .\src\components\NavbarBreadcrumbs.tsx =====
 "use client";
 
@@ -3557,174 +2711,6 @@ export default function NavbarBreadcrumbs() {
     </StyledBreadcrumbs>
   );
 }
-
-===== .\src\components\OptionsMenu.tsx =====
-'use client';
-
-import * as React from 'react';
-import { styled } from '@mui/material/styles';
-import Divider, { dividerClasses } from '@mui/material/Divider';
-import Menu from '@mui/material/Menu';
-import MuiMenuItem from '@mui/material/MenuItem';
-import { paperClasses } from '@mui/material/Paper';
-import { listClasses } from '@mui/material/List';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon, { listItemIconClasses } from '@mui/material/ListItemIcon';
-import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
-import MenuButton from './MenuButton';
-
-const MenuItem = styled(MuiMenuItem)({
-  margin: '2px 0',
-});
-
-export default function OptionsMenu() {
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-  return (
-    <React.Fragment>
-      <MenuButton
-        aria-label="Open menu"
-        onClick={handleClick}
-        sx={{ borderColor: 'transparent' }}
-      >
-        <MoreVertRoundedIcon />
-      </MenuButton>
-      <Menu
-        anchorEl={anchorEl}
-        id="menu"
-        open={open}
-        onClose={handleClose}
-        onClick={handleClose}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        sx={{
-          [`& .${listClasses.root}`]: {
-            padding: '4px',
-          },
-          [`& .${paperClasses.root}`]: {
-            padding: 0,
-          },
-          [`& .${dividerClasses.root}`]: {
-            margin: '4px -4px',
-          },
-        }}
-      >
-        <MenuItem onClick={handleClose}>Profile</MenuItem>
-        <MenuItem onClick={handleClose}>My account</MenuItem>
-        <Divider />
-        <MenuItem onClick={handleClose}>Add another account</MenuItem>
-        <MenuItem onClick={handleClose}>Settings</MenuItem>
-        <Divider />
-        <MenuItem
-          onClick={handleClose}
-          sx={{
-            [`& .${listItemIconClasses.root}`]: {
-              ml: 'auto',
-              minWidth: 0,
-            },
-          }}
-        >
-          <ListItemText>Logout</ListItemText>
-          <ListItemIcon>
-            <LogoutRoundedIcon fontSize="small" />
-          </ListItemIcon>
-        </MenuItem>
-      </Menu>
-    </React.Fragment>
-  );
-}
-
-
-===== .\src\components\PageViewsBarChart.tsx =====
-import * as React from 'react';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
-import Typography from '@mui/material/Typography';
-import Stack from '@mui/material/Stack';
-import { BarChart } from '@mui/x-charts/BarChart';
-import { useTheme } from '@mui/material/styles';
-
-export default function PageViewsBarChart() {
-  const theme = useTheme();
-  const colorPalette = [
-    (theme.vars || theme).palette.primary.dark,
-    (theme.vars || theme).palette.primary.main,
-    (theme.vars || theme).palette.primary.light,
-  ];
-  return (
-    <Card variant="outlined" sx={{ width: '100%' }}>
-      <CardContent>
-        <Typography component="h2" variant="subtitle2" gutterBottom>
-          Page views and downloads
-        </Typography>
-        <Stack sx={{ justifyContent: 'space-between' }}>
-          <Stack
-            direction="row"
-            sx={{
-              alignContent: { xs: 'center', sm: 'flex-start' },
-              alignItems: 'center',
-              gap: 1,
-            }}
-          >
-            <Typography variant="h4" component="p">
-              1.3M
-            </Typography>
-            <Chip size="small" color="error" label="-8%" />
-          </Stack>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Page views and downloads for the last 6 months
-          </Typography>
-        </Stack>
-        <BarChart
-          borderRadius={8}
-          colors={colorPalette}
-          xAxis={[
-            {
-              scaleType: 'band',
-              categoryGapRatio: 0.5,
-              data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
-              height: 24,
-            },
-          ]}
-          yAxis={[{ width: 50 }]}
-          series={[
-            {
-              id: 'page-views',
-              label: 'Page views',
-              data: [2234, 3872, 2998, 4125, 3357, 2789, 2998],
-              stack: 'A',
-            },
-            {
-              id: 'downloads',
-              label: 'Downloads',
-              data: [3098, 4215, 2384, 2101, 4752, 3593, 2384],
-              stack: 'A',
-            },
-            {
-              id: 'conversions',
-              label: 'Conversions',
-              data: [4051, 2275, 3129, 4693, 3904, 2038, 2275],
-              stack: 'A',
-            },
-          ]}
-          height={250}
-          margin={{ left: 0, right: 0, top: 20, bottom: 0 }}
-          grid={{ horizontal: true }}
-          hideLegend
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
 
 ===== .\src\components\ProductivityAnalysisChart.tsx =====
 // src/components/ProductivityAnalysisChart.tsx
@@ -3899,332 +2885,17 @@ export default function ProfitTrendChart({ data, aiLevel }: { data: any[], aiLev
   );
 }
 
-===== .\src\components\ProTip.tsx =====
-import * as React from 'react';
-import Link from '@mui/material/Link';
-import SvgIcon, { SvgIconProps } from '@mui/material/SvgIcon';
-import Typography from '@mui/material/Typography';
-
-function LightBulbIcon(props: SvgIconProps) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z" />
-    </SvgIcon>
-  );
-}
-
-export default function ProTip() {
-  return (
-    <Typography sx={{ mt: 6, mb: 3, color: 'text.secondary' }}>
-      <LightBulbIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-      {'Pro tip: See more '}
-      <Link href="https://mui.com/material-ui/getting-started/templates/">templates</Link>
-      {' in the Material UI documentation.'}
-    </Typography>
-  );
-}
-
-
-===== .\src\components\Search.tsx =====
-import * as React from 'react';
-import FormControl from '@mui/material/FormControl';
-import InputAdornment from '@mui/material/InputAdornment';
-import OutlinedInput from '@mui/material/OutlinedInput';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-
-export default function Search() {
-  return (
-    <FormControl sx={{ width: { xs: '100%', md: '25ch' } }} variant="outlined">
-      <OutlinedInput
-        size="small"
-        id="search"
-        placeholder="Search…"
-        sx={{ flexGrow: 1 }}
-        startAdornment={
-          <InputAdornment position="start" sx={{ color: 'text.primary' }}>
-            <SearchRoundedIcon fontSize="small" />
-          </InputAdornment>
-        }
-        inputProps={{
-          'aria-label': 'search',
-        }}
-      />
-    </FormControl>
-  );
-}
-
-
-===== .\src\components\SelectContent.tsx =====
-'use client'
-
-import * as React from 'react';
-import MuiAvatar from '@mui/material/Avatar';
-import MuiListItemAvatar from '@mui/material/ListItemAvatar';
-import MenuItem from '@mui/material/MenuItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListSubheader from '@mui/material/ListSubheader';
-import Select, { SelectChangeEvent, selectClasses } from '@mui/material/Select';
-import Divider from '@mui/material/Divider';
-import { styled } from '@mui/material/styles';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import DevicesRoundedIcon from '@mui/icons-material/DevicesRounded';
-import SmartphoneRoundedIcon from '@mui/icons-material/SmartphoneRounded';
-import ConstructionRoundedIcon from '@mui/icons-material/ConstructionRounded';
-
-const Avatar = styled(MuiAvatar)(({ theme }) => ({
-  width: 28,
-  height: 28,
-  backgroundColor: (theme.vars || theme).palette.background.paper,
-  color: (theme.vars || theme).palette.text.secondary,
-  border: `1px solid ${(theme.vars || theme).palette.divider}`,
-}));
-
-const ListItemAvatar = styled(MuiListItemAvatar)({
-  minWidth: 0,
-  marginRight: 12,
-});
-
-export default function SelectContent() {
-  const [company, setCompany] = React.useState('');
-
-  const handleChange = (event: SelectChangeEvent) => {
-    setCompany(event.target.value as string);
-  };
-
-  return (
-    <Select
-      labelId="company-select"
-      id="company-simple-select"
-      value={company}
-      onChange={handleChange}
-      displayEmpty
-      inputProps={{ 'aria-label': 'Select company' }}
-      fullWidth
-      sx={{
-        maxHeight: 56,
-        width: 215,
-        '&.MuiList-root': {
-          p: '8px',
-        },
-        [`& .${selectClasses.select}`]: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2px',
-          pl: 1,
-        },
-      }}
-    >
-      <ListSubheader sx={{ pt: 0 }}>Production</ListSubheader>
-      <MenuItem value="">
-        <ListItemAvatar>
-          <Avatar alt="Sitemark web">
-            <DevicesRoundedIcon sx={{ fontSize: '1rem' }} />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText primary="Sitemark-web" secondary="Web app" />
-      </MenuItem>
-      <MenuItem value={10}>
-        <ListItemAvatar>
-          <Avatar alt="Sitemark App">
-            <SmartphoneRoundedIcon sx={{ fontSize: '1rem' }} />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText primary="Sitemark-app" secondary="Mobile application" />
-      </MenuItem>
-      <MenuItem value={20}>
-        <ListItemAvatar>
-          <Avatar alt="Sitemark Store">
-            <DevicesRoundedIcon sx={{ fontSize: '1rem' }} />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText primary="Sitemark-Store" secondary="Web app" />
-      </MenuItem>
-      <ListSubheader>Development</ListSubheader>
-      <MenuItem value={30}>
-        <ListItemAvatar>
-          <Avatar alt="Sitemark Store">
-            <ConstructionRoundedIcon sx={{ fontSize: '1rem' }} />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText primary="Sitemark-Admin" secondary="Web app" />
-      </MenuItem>
-      <Divider sx={{ mx: -1 }} />
-      <MenuItem value={40}>
-        <ListItemIcon>
-          <AddRoundedIcon />
-        </ListItemIcon>
-        <ListItemText primary="Add product" secondary="Web app" />
-      </MenuItem>
-    </Select>
-  );
-}
-
-
-===== .\src\components\SessionsChart.tsx =====
-import * as React from 'react';
-import { useTheme } from '@mui/material/styles';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Chip from '@mui/material/Chip';
-import Typography from '@mui/material/Typography';
-import Stack from '@mui/material/Stack';
-import { LineChart } from '@mui/x-charts/LineChart';
-
-function AreaGradient({ color, id }: { color: string; id: string }) {
-  return (
-    <defs>
-      <linearGradient id={id} x1="50%" y1="0%" x2="50%" y2="100%">
-        <stop offset="0%" stopColor={color} stopOpacity={0.5} />
-        <stop offset="100%" stopColor={color} stopOpacity={0} />
-      </linearGradient>
-    </defs>
-  );
-}
-
-function getDaysInMonth(month: number, year: number) {
-  const date = new Date(year, month, 0);
-  const monthName = date.toLocaleDateString('en-US', {
-    month: 'short',
-  });
-  const daysInMonth = date.getDate();
-  const days = [];
-  let i = 1;
-  while (days.length < daysInMonth) {
-    days.push(`${monthName} ${i}`);
-    i += 1;
-  }
-  return days;
-}
-
-export default function SessionsChart() {
-  const theme = useTheme();
-  const data = getDaysInMonth(4, 2024);
-
-  const colorPalette = [
-    theme.palette.primary.light,
-    theme.palette.primary.main,
-    theme.palette.primary.dark,
-  ];
-
-  return (
-    <Card variant="outlined" sx={{ width: '100%' }}>
-      <CardContent>
-        <Typography component="h2" variant="subtitle2" gutterBottom>
-          Sessions
-        </Typography>
-        <Stack sx={{ justifyContent: 'space-between' }}>
-          <Stack
-            direction="row"
-            sx={{
-              alignContent: { xs: 'center', sm: 'flex-start' },
-              alignItems: 'center',
-              gap: 1,
-            }}
-          >
-            <Typography variant="h4" component="p">
-              13,277
-            </Typography>
-            <Chip size="small" color="success" label="+35%" />
-          </Stack>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Sessions per day for the last 30 days
-          </Typography>
-        </Stack>
-        <LineChart
-          colors={colorPalette}
-          xAxis={[
-            {
-              scaleType: 'point',
-              data,
-              tickInterval: (index, i) => (i + 1) % 5 === 0,
-              height: 24,
-            },
-          ]}
-          yAxis={[{ width: 50 }]}
-          series={[
-            {
-              id: 'direct',
-              label: 'Direct',
-              showMark: false,
-              curve: 'linear',
-              stack: 'total',
-              area: true,
-              stackOrder: 'ascending',
-              data: [
-                300, 900, 600, 1200, 1500, 1800, 2400, 2100, 2700, 3000, 1800, 3300,
-                3600, 3900, 4200, 4500, 3900, 4800, 5100, 5400, 4800, 5700, 6000,
-                6300, 6600, 6900, 7200, 7500, 7800, 8100,
-              ],
-            },
-            {
-              id: 'referral',
-              label: 'Referral',
-              showMark: false,
-              curve: 'linear',
-              stack: 'total',
-              area: true,
-              stackOrder: 'ascending',
-              data: [
-                500, 900, 700, 1400, 1100, 1700, 2300, 2000, 2600, 2900, 2300, 3200,
-                3500, 3800, 4100, 4400, 2900, 4700, 5000, 5300, 5600, 5900, 6200,
-                6500, 5600, 6800, 7100, 7400, 7700, 8000,
-              ],
-            },
-            {
-              id: 'organic',
-              label: 'Organic',
-              showMark: false,
-              curve: 'linear',
-              stack: 'total',
-              stackOrder: 'ascending',
-              data: [
-                1000, 1500, 1200, 1700, 1300, 2000, 2400, 2200, 2600, 2800, 2500,
-                3000, 3400, 3700, 3200, 3900, 4100, 3500, 4300, 4500, 4000, 4700,
-                5000, 5200, 4800, 5400, 5600, 5900, 6100, 6300,
-              ],
-              area: true,
-            },
-          ]}
-          height={250}
-          margin={{ left: 0, right: 20, top: 20, bottom: 0 }}
-          grid={{ horizontal: true }}
-          sx={{
-            '& .MuiAreaElement-series-organic': {
-              fill: "url('#organic')",
-            },
-            '& .MuiAreaElement-series-referral': {
-              fill: "url('#referral')",
-            },
-            '& .MuiAreaElement-series-direct': {
-              fill: "url('#direct')",
-            },
-          }}
-          hideLegend
-        >
-          <AreaGradient color={theme.palette.primary.dark} id="organic" />
-          <AreaGradient color={theme.palette.primary.main} id="referral" />
-          <AreaGradient color={theme.palette.primary.light} id="direct" />
-        </LineChart>
-      </CardContent>
-    </Card>
-  );
-}
-
-
 ===== .\src\components\SideMenu.tsx =====
+// src/components/SideMenu.tsx
 'use client'
-
 import * as React from 'react';
 import { styled } from '@mui/material/styles';
-import Avatar from '@mui/material/Avatar';
 import MuiDrawer, { drawerClasses } from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
-import Stack from '@mui/material/Stack';
-import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
-import OptionsMenu from './OptionsMenu';
+import Image from 'next/image';
+import { Stack } from '@mui/material';
 
 const drawerWidth = 240;
 
@@ -4232,7 +2903,6 @@ const Drawer = styled(MuiDrawer)({
   width: drawerWidth,
   flexShrink: 0,
   boxSizing: 'border-box',
-  mt: 10,
   [`& .${drawerClasses.paper}`]: {
     width: drawerWidth,
     boxSizing: 'border-box',
@@ -4250,15 +2920,29 @@ export default function SideMenu() {
         },
       }}
     >
-      <Box
-        sx={{
-          display: 'flex',
-          mt: 'calc(var(--template-frame-height, 0px) + 4px)',
-          p: 1.5,
-        }}
+      {/* --- BẮT ĐẦU THAY ĐỔI --- */}
+      <Stack 
+        alignItems="center" 
+        justifyContent="center"
+        // Điều chỉnh chiều cao của khu vực logo cho phù hợp
+        sx={{ p: 2, height: '84px' }}
       >
-        <SelectContent />
-      </Box>
+        <Image 
+          src="/FPT_logo.png" // Đường dẫn tới logo FPT trong thư mục /public
+          alt="FPT Corporation Logo"
+          // Các props width/height này dùng để tối ưu hóa và xác định tỷ lệ
+          // Kích thước thực tế sẽ được điều khiển bởi 'style' bên dưới
+          width={160} 
+          height={64}
+          // Dùng style để logo hiển thị với chiều rộng mong muốn và chiều cao tự động
+          style={{
+            width: '100px', // Chiếm phần lớn chiều rộng sidebar
+            height: 'auto',   // Chiều cao tự động điều chỉnh để không méo ảnh
+          }}
+        />
+      </Stack>
+      {/* --- KẾT THÚC THAY ĐỔI --- */}
+
       <Divider />
       <Box
         sx={{
@@ -4270,23 +2954,12 @@ export default function SideMenu() {
       >
         <MenuContent />
       </Box>
-      <Stack
-        direction="row"
-        sx={{
-          p: 2,
-          gap: 1,
-          alignItems: 'center',
-          borderTop: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-      </Stack>
     </Drawer>
   );
 }
 
-
 ===== .\src\components\SideMenuMobile.tsx =====
+// src/components/SideMenuMobile.tsx
 import * as React from 'react';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
@@ -4298,7 +2971,6 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import MenuButton from './MenuButton';
 import MenuContent from './MenuContent';
-import CardAlert from './CardAlert';
 
 interface SideMenuMobileProps {
   open: boolean | undefined;
@@ -4325,41 +2997,19 @@ export default function SideMenuMobile({ open, toggleDrawer }: SideMenuMobilePro
           height: '100%',
         }}
       >
-        <Stack direction="row" sx={{ p: 2, pb: 0, gap: 1 }}>
-          <Stack
-            direction="row"
-            sx={{ gap: 1, alignItems: 'center', flexGrow: 1, p: 1 }}
-          >
-            <Avatar
-              sizes="small"
-              alt="Riley Carter"
-              src="/static/images/avatar/7.jpg"
-              sx={{ width: 24, height: 24 }}
-            />
-            <Typography component="p" variant="h6">
-              Riley Carter
-            </Typography>
-          </Stack>
-          <MenuButton showBadge>
-            <NotificationsRoundedIcon />
-          </MenuButton>
-        </Stack>
-        <Divider />
-        <Stack sx={{ flexGrow: 1 }}>
+        <Stack sx={{ flexGrow: 1, mt: 1 }}>
           <MenuContent />
           <Divider />
         </Stack>
-        <CardAlert />
         <Stack sx={{ p: 2 }}>
           <Button variant="outlined" fullWidth startIcon={<LogoutRoundedIcon />}>
-            Logout
+            Đăng xuất
           </Button>
         </Stack>
       </Stack>
     </Drawer>
   );
 }
-
 
 ===== .\src\components\SocialImpactChart.tsx =====
 // src/components/SocialImpactChart.tsx
@@ -4573,55 +3223,6 @@ export default function StatCard({
   );
 }
 
-
-===== .\src\components\SurplusAllocationChart.tsx =====
-// src/components/SurplusAllocationChart.tsx
-"use client";
-import * as React from 'react';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Typography from '@mui/material/Typography';
-import { PieChart } from '@mui/x-charts/PieChart';
-import { Box } from '@mui/material';
-
-const data = [
-  { id: 0, value: 40, label: 'Đào tạo lại & Phúc lợi XH', color: '#4caf50' },
-  { id: 1, value: 30, label: 'Tái đầu tư R&D công nghệ', color: '#2196f3' },
-  { id: 2, value: 20, label: 'Giảm giá thành sản phẩm', color: '#ff9800' },
-  { id: 3, value: 10, label: 'Tích lũy tư bản', color: '#f44336' },
-];
-
-export default function SurplusAllocationChart() {
-  return (
-    <Card variant="outlined" sx={{ height: '100%' }}>
-      <CardContent>
-        <Typography component="h2" variant="h6" gutterBottom>
-          Kịch bản Tương lai: Phân bổ Thặng dư
-        </Typography>
-        <Box sx={{ height: 280 }}>
-           <PieChart
-              series={[{ 
-                data, 
-                highlightScope: { fade: 'global', highlight: 'item' },
-                faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
-              }]}
-              // --- SỬA LỖI TẠI ĐÂY ---
-              slotProps={{
-                legend: {
-                  // Đã xóa 'direction' và 'padding' không hợp lệ.
-                  position: { vertical: 'middle', horizontal: 'end' },
-                  // Bạn có thể dùng 'itemGap' để điều chỉnh khoảng cách giữa các mục legend nếu cần
-                  // itemGap: 10, 
-                },
-              }}
-              // Margin này tạo không gian ở bên phải cho legend hiển thị.
-              margin={{ top: 10, bottom: 10, left: 10, right: 150 }}
-            />
-        </Box>
-      </CardContent>
-    </Card>
-  );
-}
 
 ===== .\src\components\ValueDistributionChart.tsx =====
 // src/components/ValueDistributionChart.tsx
@@ -8038,13 +6639,15 @@ export const treeViewCustomizations: TreeViewComponents<Theme> = {
 
 ===== DIRECTORY TREE =====
 ./
+    .env.example
+    LICENSE
     next-env.d.ts
     next.config.mjs
     package.json
-    README.md
     tsconfig.json
     public/
         .gitkeep
+        FPT_logo.png
     src/
         theme.ts
         app/
@@ -8054,15 +6657,9 @@ export const treeViewCustomizations: TreeViewComponents<Theme> = {
             about/
                 page.tsx
             api/
-                analyze-from-text/
-                    route.ts
-                analyze-scenario/
-                    route.ts
                 chat/
                     route.ts
                 generate-advice/
-                    route.ts
-                generate-title/
                     route.ts
                 openrouter/
                     route.ts
@@ -8082,41 +6679,27 @@ export const treeViewCustomizations: TreeViewComponents<Theme> = {
             AnalysisPanel.tsx
             AppNavbar.tsx
             CapitalConcentrationChart.tsx
-            CardAlert.tsx
-            ChartUserByCountry.tsx
             ChatInput.tsx
             ChatMessageList.tsx
             ChatWelcome.tsx
-            CustomDatePicker.tsx
-            CustomizedDataGrid.tsx
-            CustomizedTreeView.tsx
             FutureScenarioChart.tsx
             FutureScenariosChart.tsx
             Header.tsx
-            HighlightedCard.tsx
             KeyMetricsTrendChart.tsx
             LaborSkillChart.tsx
             MainGrid.tsx
             MenuButton.tsx
             MenuContent.tsx
-            ModeSwitch.tsx
             NavbarBreadcrumbs.tsx
-            OptionsMenu.tsx
-            PageViewsBarChart.tsx
             ProductivityAnalysisChart.tsx
             ProductivityLeverageCard.tsx
             ProfitCompositionChart.tsx
             ProfitTrendChart.tsx
-            ProTip.tsx
-            Search.tsx
-            SelectContent.tsx
-            SessionsChart.tsx
             SideMenu.tsx
             SideMenuMobile.tsx
             SocialImpactChart.tsx
             SocialImpactComparisonChart.tsx
             StatCard.tsx
-            SurplusAllocationChart.tsx
             ValueDistributionChart.tsx
             ValueStructurePieChart.tsx
             WagePressureChart.tsx
