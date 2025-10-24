@@ -2,30 +2,46 @@
 import * as React from 'react';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { useDrawingArea } from '@mui/x-charts/hooks';
-import { styled, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 
-const StyledText = styled('text')(({ theme }) => ({
+// Giữ StyledText đơn giản, không định nghĩa màu sắc
+const StyledText = styled('text')({
   textAnchor: 'middle',
   dominantBaseline: 'central',
-  fill: theme.palette.text.primary,
-}));
+});
 
 function PieCenterLabel({ primaryText, secondaryText }: { primaryText: string, secondaryText: string }) {
   const { width, height, left, top } = useDrawingArea();
-  const theme = useTheme(); 
 
   return (
     <React.Fragment>
-      {/* UPDATE: Tăng kích thước font chữ cho dễ đọc hơn */}
-      <StyledText x={left + width / 2} y={top + height / 2 - 12} style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>
+      {/* --- GIẢI PHÁP TRIỆT ĐỂ: SỬ DỤNG TRỰC TIẾP BIẾN CSS TỪ THEME --- */}
+      <StyledText
+        x={left + width / 2}
+        y={top + height / 2 - 12}
+        sx={{
+          fontSize: '1.8rem',
+          fontWeight: 'bold',
+          // Sử dụng biến CSS cho màu văn bản chính.
+          // Đây là cách đáng tin cậy nhất để lấy đúng màu.
+          fill: 'var(--template-palette-text-primary)',
+        }}
+      >
         {primaryText}
       </StyledText>
-      <StyledText x={left + width / 2} y={top + height / 2 + 18} style={{ fill: theme.palette.text.secondary }}>
+      <StyledText
+        x={left + width / 2}
+        y={top + height / 2 + 18}
+        sx={{
+          // Sử dụng biến CSS cho màu văn bản phụ.
+          fill: 'var(--template-palette-text-secondary)',
+        }}
+      >
         {secondaryText}
       </StyledText>
     </React.Fragment>
@@ -61,20 +77,17 @@ export default function ValueStructurePieChart({ data, mRate }: { data: any[], m
           Cơ cấu Giá trị & Tỷ suất Bóc lột
         </Typography>
         
-        {/* UPDATE: Tăng chiều cao vùng chứa để biểu đồ lớn hơn */}
         <Box sx={{ height: 350, width: '100%' }}>
           <PieChart
             series={[
               {
                 data,
-                // UPDATE: Điều chỉnh bán kính để biểu đồ to và đẹp hơn
                 innerRadius: '40%',
                 outerRadius: '90%',
                 paddingAngle: 2,
                 highlightScope: { fade: 'global', highlight: 'item' },
               },
             ]}
-            // ẨN HOÀN TOÀN LEGEND GỐC
             hideLegend={true} 
             margin={{ top: 20, bottom: 20, left: 10, right: 10 }}
           >
@@ -82,7 +95,6 @@ export default function ValueStructurePieChart({ data, mRate }: { data: any[], m
           </PieChart>
         </Box>
 
-        {/* CHÚ THÍCH TỰ TẠO - ĐẶT BÊN NGOÀI BIỂU ĐỒ */}
         <CustomLegend data={data} />
       </CardContent>
     </Card>
