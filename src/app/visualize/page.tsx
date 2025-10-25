@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Grid, Paper, Typography, Box, CssBaseline, Button, Stack, Divider, Alert, Card } from '@mui/material';
-import { BarChart } from '@mui/x-charts';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ModelTrainingIcon from '@mui/icons-material/ModelTraining';
 import ReactMarkdown from 'react-markdown';
@@ -16,13 +15,19 @@ import Loading from '@/app/loading';
 import { chartsCustomizations } from '@/theme/customizations';
 import KeyMetricsTrendChart from '@/components/KeyMetricsTrendChart';
 import FutureScenarioChart from '@/components/FutureScenarioChart';
+// --- THÊM IMPORT "type" TỪ COMPONENT ---
+import { type ChartData } from '@/components/FutureScenarioChart';
+import { BarChart } from '@mui/x-charts';
 
 const xThemeComponents = { ...chartsCustomizations };
 
 interface AnalysisResult { c: number; v: number; m: number; organicComp: number; pRate: number; }
 interface VisualizationData { before: AnalysisResult; after: AnalysisResult; analysis: string; }
-interface ChartData { type: string; title: string; description?: string; data: any; }
-interface AISuggestion { adviceText: string; suggestedCharts: ChartData[]; }
+
+// --- XÓA BỎ INTERFACE CŨ, GÂY XUNG ĐỘT ---
+// interface ChartData { type: string; title: string; description?: string; data: any; }
+
+interface AISuggestion { adviceText: string; suggestedCharts: ChartData[]; } // Dòng này giờ sẽ sử dụng ChartData được import
 interface FinalPayload { analysisData: VisualizationData; suggestionData?: AISuggestion; } 
 
 export default function VisualizePage() {
@@ -73,14 +78,22 @@ export default function VisualizePage() {
                         
                         <Grid container spacing={3}>
                             <Grid size={12}><Divider>PHÂN TÍCH HIỆN TRẠNG (DỮ LIỆU CỦA BẠN)</Divider></Grid>
-                            <Grid size={{ xs: 12, lg: 6 }}><Paper variant="outlined" sx={{ p: 2, height: '100%' }}><Typography variant="h6" gutterBottom>So sánh Cấu trúc Tư bản (C-V-M)</Typography><Box sx={{ height: 300 }}><BarChart dataset={barChartData} xAxis={[{ scaleType: 'band', dataKey: 'type' }]} series={[{ dataKey: 'C', label: 'Tư bản Bất biến' }, { dataKey: 'V', label: 'Tư bản Khả biến' }, { dataKey: 'M', label: 'Giá trị Thặng dư' }]} /></Box></Paper></Grid>
+                            <Grid size={{ xs: 12, lg: 6 }}>
+                                <Card variant="outlined" sx={{ p: 2, height: '100%' }}>
+                                    <Typography variant="h6" gutterBottom>So sánh Cấu trúc Tư bản (C-V-M)</Typography>
+                                    <Box sx={{ height: 300, width: '100%' }}>
+                                        <BarChart 
+                                            dataset={barChartData} 
+                                            xAxis={[{ scaleType: 'band', dataKey: 'type' }]} 
+                                            series={[{ dataKey: 'C', label: 'Tư bản Bất biến' }, { dataKey: 'V', label: 'Tư bản Khả biến' }, { dataKey: 'M', label: 'Giá trị Thặng dư' }]} 
+                                        />
+                                    </Box>
+                                </Card>
+                            </Grid>
                             <Grid size={{ xs: 12, lg: 6 }}><KeyMetricsTrendChart data={keyMetricsData} /></Grid>
 
                             <Grid size={12}><Divider sx={{mt: 3}}>LỘ TRÌNH TƯƠNG LAI TỪ TRỢ LÝ AI</Divider></Grid>
                             
-                            {/* --- BẮT ĐẦU THAY ĐỔI --- */}
-                            
-                            {/* KHU VỰC 1: "THƯ NGỎ" FULL-WIDTH */}
                             <Grid size={12}>
                                 {suggestionData?.adviceText ? (
                                     <Card variant="outlined" sx={{ p: 2.5 }}>
@@ -99,7 +112,6 @@ export default function VisualizePage() {
                                 )}
                             </Grid>
 
-                            {/* KHU VỰC 2: CÁC BIỂU ĐỒ MINH HỌA CHO LỘ TRÌNH */}
                             {suggestionData?.suggestedCharts && suggestionData.suggestedCharts.length > 0 && (
                                 <Grid size={12}>
                                     <Typography variant="h6" sx={{ mt: 3, mb: 2}}>Trực quan hóa Lộ trình Tương lai</Typography>
@@ -112,8 +124,6 @@ export default function VisualizePage() {
                                     </Grid>
                                 </Grid>
                             )}
-
-                            {/* --- KẾT THÚC THAY ĐỔI --- */}
                         </Grid>
                     </Container>
                 </Box>

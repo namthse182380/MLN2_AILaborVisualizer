@@ -1,6 +1,9 @@
+// src/components/AppNavbar.tsx
 "use client";
 
 import * as React from 'react';
+import Image from 'next/image'; // --- THÊM MỚI ---
+import { usePathname } from 'next/navigation'; // --- THÊM MỚI ---
 import { styled } from '@mui/material/styles';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -8,8 +11,8 @@ import Stack from '@mui/material/Stack';
 import MuiToolbar from '@mui/material/Toolbar';
 import { tabsClasses } from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider'; // --- THÊM MỚI ---
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
-import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import SideMenuMobile from './SideMenuMobile';
 import MenuButton from './MenuButton';
 import ColorModeIconDropdown from '.././theme/ColorModeIconDropdown';
@@ -30,8 +33,27 @@ const Toolbar = styled(MuiToolbar)({
   },
 });
 
+// --- THÊM MỚI: Logic để lấy tên trang ---
+const pathMap: { [key: string]: string } = {
+  '/': 'Trang chủ',
+  '/simulation': 'Trạm Mô phỏng',
+  '/lab': 'Phòng Thí nghiệm',
+  '/chat': 'Trợ lý Phân tích',
+  '/about': 'Thư viện Tri thức',
+  '/visualize': 'Dashboard Phân tích',
+};
+
 export default function AppNavbar() {
   const [open, setOpen] = React.useState(false);
+  const pathname = usePathname();
+
+  let pageTitle = 'Dashboard'; // Default title
+  if (pathname.startsWith('/chat/')) {
+    pageTitle = 'Trợ lý Phân tích';
+  } else {
+    pageTitle = pathMap[pathname] || 'Dashboard';
+  }
+  // --- KẾT THÚC THÊM MỚI ---
 
   const toggleDrawer = (newOpen: boolean) => () => {
     setOpen(newOpen);
@@ -60,16 +82,28 @@ export default function AppNavbar() {
             gap: 1,
           }}
         >
+          {/* --- BẮT ĐẦU THAY ĐỔI GIAO DIỆN HEADER --- */}
           <Stack
             direction="row"
-            spacing={1}
-            sx={{ justifyContent: 'center', mr: 'auto' }}
+            spacing={1.5}
+            sx={{ alignItems: 'center', mr: 'auto' }}
           >
-            <CustomIcon />
-            <Typography variant="h4" component="h1" sx={{ color: 'text.primary' }}>
-              Dashboard
+            <Image
+              src="/FPT_logo.png"
+              alt="FPT Logo"
+              width={80}
+              height={32}
+              style={{
+                height: '32px',
+                width: 'auto',
+              }}
+            />
+            <Divider orientation="vertical" flexItem />
+            <Typography variant="h6" component="h1" sx={{ color: 'text.primary', fontWeight: 600 }}>
+              {pageTitle}
             </Typography>
           </Stack>
+          {/* --- KẾT THÚC THAY ĐỔI GIAO DIỆN HEADER --- */}
           <ColorModeIconDropdown />
           <MenuButton aria-label="menu" onClick={toggleDrawer(true)}>
             <MenuRoundedIcon />
@@ -81,27 +115,5 @@ export default function AppNavbar() {
   );
 }
 
-export function CustomIcon() {
-  return (
-    <Box
-      sx={{
-        width: '1.5rem',
-        height: '1.5rem',
-        bgcolor: 'black',
-        borderRadius: '999px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        alignSelf: 'center',
-        backgroundImage:
-          'linear-gradient(135deg, hsl(210, 98%, 60%) 0%, hsl(210, 100%, 35%) 100%)',
-        color: 'hsla(210, 100%, 95%, 0.9)',
-        border: '1px solid',
-        borderColor: 'hsl(210, 100%, 55%)',
-        boxShadow: 'inset 0 2px 5px rgba(255, 255, 255, 0.3)',
-      }}
-    >
-      <DashboardRoundedIcon color="inherit" sx={{ fontSize: '1rem' }} />
-    </Box>
-  );
-}
+// --- XÓA: Component CustomIcon không còn được sử dụng ---
+// export function CustomIcon() { ... }

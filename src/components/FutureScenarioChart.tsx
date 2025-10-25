@@ -4,45 +4,55 @@ import React from 'react';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import { BarChart, PieChart } from '@mui/x-charts';
 
-// Một component đa năng để render các biểu đồ tương lai
-export default function FutureScenarioChart({ chartData }: { chartData: any }) {
+// --- THÊM "export" ĐỂ CHIA SẺ INTERFACE NÀY ---
+export interface ChartData {
+  type: 'pie' | 'investment_bar' | 'value_distribution';
+  title: string;
+  description?: string;
+  data: any;
+}
+
+export default function FutureScenarioChart({ chartData }: { chartData: ChartData }) {
   if (!chartData || !chartData.data) return null;
 
   const renderChart = () => {
     switch (chartData.type) {
       case 'pie':
         return (
-          <PieChart
-            series={[{ data: chartData.data, innerRadius: 30, cx: '50%' }]}
-            height={200}
-            margin={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          />
+          <Box sx={{ width: '100%', height: 250 }}>
+            <PieChart
+              series={[{ data: chartData.data, innerRadius: 30, cx: '50%' }]}
+              margin={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            />
+          </Box>
         );
+
       case 'investment_bar':
         return (
-           <BarChart
+          <Box sx={{ width: '100%', height: 250 }}>
+            <BarChart
               dataset={chartData.data}
               xAxis={[{ scaleType: 'band', dataKey: 'category' }]}
               series={[{ dataKey: 'value', label: 'Giá trị Đầu tư' }]}
-              height={200}
               margin={{ top: 40, bottom: 30, left: 50, right: 20 }}
             />
+          </Box>
         );
+
       case 'value_distribution':
-         const seriesKeys = Object.keys(chartData.data[0]).filter(key => key !== 'scenario');
-         return (
-            // --- SỬA LỖI TẠI ĐÂY ---
+        const seriesKeys = Object.keys(chartData.data[0]).filter(key => key !== 'scenario');
+        return (
+          <Box sx={{ width: '100%', height: 250 }}>
             <BarChart
-                dataset={chartData.data}
-                // Vì layout là 'horizontal', trục danh mục phải là yAxis.
-                yAxis={[{ scaleType: 'band', dataKey: 'scenario' }]} 
-                series={seriesKeys.map(key => ({ dataKey: key, stack: 'total', label: key }))}
-                height={200}
-                layout="horizontal" // Giữ nguyên vì chúng ta muốn biểu đồ ngang
-                margin={{ top: 40, bottom: 30, left: 120, right: 20 }}
+              dataset={chartData.data}
+              xAxis={[{ scaleType: 'band', dataKey: 'scenario' }]}
+              series={seriesKeys.map(key => ({ dataKey: key, stack: 'total', label: key }))}
+              layout="vertical"
+              margin={{ top: 40, bottom: 30, left: 20, right: 20 }}
             />
-            // --- KẾT THÚC SỬA LỖI ---
-         );
+          </Box>
+        );
+
       default:
         return <Typography>Loại biểu đồ không được hỗ trợ.</Typography>;
     }
@@ -59,9 +69,7 @@ export default function FutureScenarioChart({ chartData }: { chartData: any }) {
             {chartData.description}
           </Typography>
         )}
-        <Box sx={{ width: '100%' }}>
-          {renderChart()}
-        </Box>
+        {renderChart()}
       </CardContent>
     </Card>
   );
