@@ -26,12 +26,14 @@ export default function KeyMetricsTrendChart({ data }: KeyMetricsTrendChartProps
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           Trực quan hóa sự thay đổi của các quy luật kinh tế.
         </Typography>
-        <Box sx={{ height: 250, mt: 2 }}>
+        
+        {/* --- BẮT ĐẦU THAY ĐỔI --- */}
+        <Box sx={{ height: 300, width: '100%', mt: 2 }}>
             <BarChart
                 dataset={data}
-                yAxis={[{ scaleType: 'band', dataKey: 'metric' }]}
+                // Chuyển trục Y thành trục X để các nhãn danh mục nằm bên dưới
+                xAxis={[{ scaleType: 'band', dataKey: 'metric' }]}
                 series={[
-                    // --- SỬA LỖI TẠI ĐÂY ---
                     { 
                         dataKey: 'before', 
                         label: 'Trước AI', 
@@ -48,13 +50,15 @@ export default function KeyMetricsTrendChart({ data }: KeyMetricsTrendChartProps
                             return `${value.toFixed(2)}${data[dataIndex].unit}`;
                         }
                     },
-                    // --- KẾT THÚC SỬA LỖI ---
                 ]}
-                layout="horizontal"
-                margin={{ left: 150, right: 20, top: 40, bottom: 30 }}
-                grid={{ vertical: true }}
+                // Chuyển layout sang "vertical"
+                layout="vertical"
+                margin={{ left: 60, right: 20, top: 40, bottom: 40 }}
+                grid={{ horizontal: true }} // Đổi lưới sang ngang cho phù hợp
             />
         </Box>
+        {/* --- KẾT THÚC THAY ĐỔI --- */}
+
       </CardContent>
     </Card>
   );

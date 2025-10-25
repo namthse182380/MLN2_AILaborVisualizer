@@ -1436,7 +1436,8 @@ export default function SimulationPage(props: { disableCustomTheme?: boolean }) 
       <Box sx={{ display: 'flex' }}>
         <SideMenu />
         <AppNavbar />
-        <Box component="main" sx={(theme) => ({ flexGrow: 1, backgroundColor: alpha(theme.palette.background.default, 1), overflow: 'auto' })}>
+        {/* --- REMOVED: Bỏ thuộc tính backgroundColor để theme gốc quyết định --- */}
+        <Box component="main" sx={(theme) => ({ flexGrow: 1, overflow: 'auto' })}>
           <Stack spacing={2} sx={{ alignItems: 'center', mx: 3, pb: 5, mt: { xs: 8, md: 0 } }}>
             <Header />
             <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
@@ -3269,30 +3270,46 @@ export default function ValueDistributionChart({ chartData }: { chartData: any }
 import * as React from 'react';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { useDrawingArea } from '@mui/x-charts/hooks';
-import { styled, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 
-const StyledText = styled('text')(({ theme }) => ({
+// Giữ StyledText đơn giản, không định nghĩa màu sắc
+const StyledText = styled('text')({
   textAnchor: 'middle',
   dominantBaseline: 'central',
-  fill: theme.palette.text.primary,
-}));
+});
 
 function PieCenterLabel({ primaryText, secondaryText }: { primaryText: string, secondaryText: string }) {
   const { width, height, left, top } = useDrawingArea();
-  const theme = useTheme(); 
 
   return (
     <React.Fragment>
-      {/* UPDATE: Tăng kích thước font chữ cho dễ đọc hơn */}
-      <StyledText x={left + width / 2} y={top + height / 2 - 12} style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>
+      {/* --- GIẢI PHÁP TRIỆT ĐỂ: SỬ DỤNG TRỰC TIẾP BIẾN CSS TỪ THEME --- */}
+      <StyledText
+        x={left + width / 2}
+        y={top + height / 2 - 12}
+        sx={{
+          fontSize: '1.8rem',
+          fontWeight: 'bold',
+          // Sử dụng biến CSS cho màu văn bản chính.
+          // Đây là cách đáng tin cậy nhất để lấy đúng màu.
+          fill: 'var(--template-palette-text-primary)',
+        }}
+      >
         {primaryText}
       </StyledText>
-      <StyledText x={left + width / 2} y={top + height / 2 + 18} style={{ fill: theme.palette.text.secondary }}>
+      <StyledText
+        x={left + width / 2}
+        y={top + height / 2 + 18}
+        sx={{
+          // Sử dụng biến CSS cho màu văn bản phụ.
+          fill: 'var(--template-palette-text-secondary)',
+        }}
+      >
         {secondaryText}
       </StyledText>
     </React.Fragment>
@@ -3328,20 +3345,17 @@ export default function ValueStructurePieChart({ data, mRate }: { data: any[], m
           Cơ cấu Giá trị & Tỷ suất Bóc lột
         </Typography>
         
-        {/* UPDATE: Tăng chiều cao vùng chứa để biểu đồ lớn hơn */}
         <Box sx={{ height: 350, width: '100%' }}>
           <PieChart
             series={[
               {
                 data,
-                // UPDATE: Điều chỉnh bán kính để biểu đồ to và đẹp hơn
                 innerRadius: '40%',
                 outerRadius: '90%',
                 paddingAngle: 2,
                 highlightScope: { fade: 'global', highlight: 'item' },
               },
             ]}
-            // ẨN HOÀN TOÀN LEGEND GỐC
             hideLegend={true} 
             margin={{ top: 20, bottom: 20, left: 10, right: 10 }}
           >
@@ -3349,13 +3363,11 @@ export default function ValueStructurePieChart({ data, mRate }: { data: any[], m
           </PieChart>
         </Box>
 
-        {/* CHÚ THÍCH TỰ TẠO - ĐẶT BÊN NGOÀI BIỂU ĐỒ */}
         <CustomLegend data={data} />
       </CardContent>
     </Card>
   );
 }
-
 
 ===== .\src\components\WagePressureChart.tsx =====
 "use client";
@@ -4436,6 +4448,7 @@ export const rows: GridRowsProp = [
 
 
 ===== .\src\theme\AppTheme.tsx =====
+// src/theme/AppTheme.tsx
 import * as React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import type { ThemeOptions } from '@mui/material/styles';
@@ -4461,12 +4474,12 @@ export default function AppTheme(props: AppThemeProps) {
     return disableCustomTheme
       ? {}
       : createTheme({
-          // For more details about CSS variables configuration, see https://mui.com/material-ui/customization/css-theme-variables/configuration/
+          // --- FIX: Đồng bộ hóa cấu hình với theme gốc ---
           cssVariables: {
-            colorSchemeSelector: 'data-mui-color-scheme',
+            colorSchemeSelector: 'class', // Thay đổi từ 'data-mui-color-scheme'
             cssVarPrefix: 'template',
           },
-          colorSchemes, // Recently added in v6 for building light & dark mode app, see https://mui.com/material-ui/customization/palette/#color-schemes
+          colorSchemes,
           typography,
           shadows,
           shape,
@@ -4489,7 +4502,6 @@ export default function AppTheme(props: AppThemeProps) {
     </ThemeProvider>
   );
 }
-
 
 ===== .\src\theme\ColorModeIconDropdown.tsx =====
 import * as React from 'react';
@@ -6727,4 +6739,4 @@ export const treeViewCustomizations: TreeViewComponents<Theme> = {
                 navigation.tsx
                 surfaces.ts
                 treeView.ts
-    utils/
+    _utils/

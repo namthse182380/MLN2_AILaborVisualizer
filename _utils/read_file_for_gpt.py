@@ -1,10 +1,10 @@
 import os
 
-def save_all_source_code(output_path='utils/output.txt', excluded_dirs=None, excluded_files=None, included_ext=None):
+def save_all_source_code(output_path='_utils/output.txt', excluded_dirs=None, excluded_files=None, included_ext=None):
     if excluded_dirs is None:
         excluded_dirs = {
             '__pycache__', '_dataset', '_logs', '_model_trained', '_results',
-            'node_modules', '.next', '.git', '.venv', '.vscode', '.idea', 'dist', 'build'
+            'node_modules', '.next', '.git', '.venv', '.vscode', '.idea', 'dist', 'build', 'taco_yolo', 'data_input', 'marl_results', 'output','logs'
         }
     if excluded_files is None:
         excluded_files = {
@@ -31,7 +31,7 @@ def save_all_source_code(output_path='utils/output.txt', excluded_dirs=None, exc
                         outfile.write(code + "\n")
                         file_count += 1
                     except Exception as e:
-                        print(f"⚠️ Lỗi đọc {filepath}: {e}")
+                        print(f" Lỗi đọc {filepath}: {e}")
 
         # Ghi phần cây thư mục
         outfile.write("\n===== DIRECTORY TREE =====\n")
@@ -45,7 +45,7 @@ def save_all_source_code(output_path='utils/output.txt', excluded_dirs=None, exc
                     subindent = '    ' * (level + 1)
                     outfile.write(f"{subindent}{file}\n")
 
-    print(f"✅ Đã lưu {file_count} file mã nguồn (backend + frontend) vào '{output_path}'.")
+    print(f" Đã lưu {file_count} file mã nguồn (backend + frontend) vào '{output_path}'.")
 
 if __name__ == '__main__':
     save_all_source_code()
